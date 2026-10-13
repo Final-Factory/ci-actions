@@ -1,0 +1,15 @@
+name: FFBox artifact hand-off
+description: >
+  On an FFBox runner, zip an artifact and hand it, with this job's Actions runtime credential, to
+  the host through the drop box, so the host performs the upload and the container never needs blob
+  storage. Use `upload` instead: it calls this on FFBox and actions/upload-artifact elsewhere.
+inputs:
+  name:
+    description: The artifact name, as it should appear on the run.
+    required: true
+  path:
+    description: Directory to archive.
+    required: true
+runs:
+  using: node24
+  main: index.cjs
