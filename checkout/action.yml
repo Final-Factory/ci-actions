@@ -1,0 +1,37 @@
+name: Checkout (portable)
+description: >
+  actions/checkout that works on any runner. On an FFBox runner, whose fence cannot reach github.com,
+  the host's mirror of this repository is brought up to this commit first and git is pointed at it;
+  on GitHub's runners or any other machine it is actions/checkout and nothing else.
+inputs:
+  fetch-depth:
+    description: Commits to fetch; 0 for every branch and tag (actions/checkout's own input).
+    default: '1'
+  ref:
+    description: The branch, tag or commit to check out; empty for the event's own (actions/checkout's).
+    default: ''
+outputs:
+  ffbox:
+    description: "'true' on an FFBox runner."
+    value: ${{ steps.where.outputs.ffbox }}
+runs:
+  using: composite
+  steps:
+    - id: where
+      shell: bash
+      env:
+        SHA: ${{ github.sha }}
+      run: |
+        # FFGHR_GIT_MIRROR is set by the FFBox host when it starts the container; nothing else sets it.
+        if [ -n "${FFGHR_GIT_MIRROR:-}" ] && [ -x /opt/ffghr/ffghr-workspace.sh ]; then
+          echo "ffbox=true" >> "$GITHUB_OUTPUT"
+          # The repository must be on the host's extra_mirrors (ffbox config.md) or the host refuses.
+          /opt/ffghr/ffghr-workspace.sh use-mirror "$SHA"
+        else
+          echo "ffbox=false" >> "$GITHUB_OUTPUT"
+          echo "not an FFBox runner: actions/checkout fetches from GitHub"
+        fi
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        ref: ${{ inputs.ref }}

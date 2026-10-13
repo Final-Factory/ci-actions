@@ -1,0 +1,61 @@
+name: Toolchain (portable)
+description: >
+  Node, gitleaks and shellcheck at the versions asked for, wherever the job runs. A tool already on
+  the runner at that version is used as it is (the FFBox image bakes them, and a container there
+  cannot download any). One that is missing is installed on GitHub's runners and other machines,
+  and on FFBox the step fails naming the line of ffbox's scripts/Dockerfile to bump.
+inputs:
+  node:
+    description: Node major version, e.g. '24'; empty for none.
+    default: ''
+  gitleaks:
+    description: gitleaks version, e.g. '8.30.1'; empty for none.
+    default: ''
+  shellcheck:
+    description: "'true' to require shellcheck on the PATH."
+    default: 'false'
+outputs:
+  ffbox:
+    description: "'true' on an FFBox runner."
+    value: ${{ steps.probe.outputs.ffbox }}
+runs:
+  using: composite
+  steps:
+    - id: probe
+      shell: bash
+      env:
+        WANT_NODE: ${{ inputs.node }}
+      run: |
+        if [ -n "${FFGHR_GIT_MIRROR:-}" ]; then echo "ffbox=true"; else echo "ffbox=false"; fi >> "$GITHUB_OUTPUT"
+        have=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo none)
+        if [ -z "$WANT_NODE" ] || [ "$have" = "$WANT_NODE" ]; then echo "node_ok=true"; else echo "node_ok=false"; fi >> "$GITHUB_OUTPUT"
+        echo "node on the runner: $have; wanted: ${WANT_NODE:-none}"
+    - if: steps.probe.outputs.node_ok != 'true' && steps.probe.outputs.ffbox == 'true'
+      shell: bash
+      run: |
+        echo "::error::Node ${{ inputs.node }} is not in the FFBox runner image: bump NODE_VERSION in ffbox scripts/Dockerfile (the host rebuilds the image on its next update), then re-run"
+        exit 1
+    - if: steps.probe.outputs.node_ok != 'true' && steps.probe.outputs.ffbox != 'true'
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node }}
+    - if: inputs.gitleaks != ''
+      shell: bash
+      env:
+        WANT: ${{ inputs.gitleaks }}
+        FFBOX: ${{ steps.probe.outputs.ffbox }}
+      run: '"$GITHUB_ACTION_PATH/../scripts/gitleaks.sh" "$WANT" "$FFBOX"'
+    - if: inputs.shellcheck == 'true'
+      shell: bash
+      env:
+        FFBOX: ${{ steps.probe.outputs.ffbox }}
+      run: |
+        if command -v shellcheck >/dev/null; then shellcheck --version | sed -n 2p; exit 0; fi
+        if [ "$FFBOX" = true ]; then
+          echo "::error::shellcheck is missing from the FFBox runner image (ffbox scripts/Dockerfile installs it)"; exit 1
+        fi
+        case "$RUNNER_OS" in
+          Linux) sudo apt-get install -y -q shellcheck ;;
+          macOS) brew install shellcheck ;;
+          *) echo "::error::no shellcheck and no way to install it on $RUNNER_OS"; exit 1 ;;
+        esac

@@ -1,0 +1,36 @@
+name: Upload an artifact (portable)
+description: >
+  actions/upload-artifact that works on any runner. An FFBox container cannot reach the blob storage
+  artifacts are written to, so there the files are handed to the host, which uploads them on this
+  job's own credential (ffbox-handoff); anywhere else it is actions/upload-artifact.
+inputs:
+  name:
+    description: The artifact name.
+    required: true
+  path:
+    description: The directory to upload.
+    required: true
+  retention-days:
+    description: Days to keep it on GitHub's runners; empty for the repository's default. The FFBox host uses its own.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - id: where
+      shell: bash
+      run: |
+        if [ -n "${FFGHR_GIT_MIRROR:-}" ] && [ -d "${FFGHR_OUT:-/ffghr/out}" ]; then echo "ffbox=true"; else echo "ffbox=false"; fi >> "$GITHUB_OUTPUT"
+    # A COMMIT OF THIS REPOSITORY, NOT ./ffbox-handoff: in a composite action `./` is the job's
+    # workspace, not this action. So changing ffbox-handoff takes two commits: the change, then the
+    # pin here. The FFBox host archives every commit of this repository, so the pin always loads there.
+    - if: steps.where.outputs.ffbox == 'true'
+      uses: Final-Factory/ci-actions/ffbox-handoff@5576b251d6b970afc1047b6fdf221a1d9199785f
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+    - if: steps.where.outputs.ffbox != 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        retention-days: ${{ inputs.retention-days }}
