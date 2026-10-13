@@ -50,6 +50,7 @@ jobs:
         uses: ./ci-actions/setup
         with:
           node: '22'
+          node-cache: ''
           gitleaks: 8.30.1
           shellcheck: 'true'
       - name: the toolchain is the one asked for

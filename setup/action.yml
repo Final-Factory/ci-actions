@@ -8,6 +8,9 @@ inputs:
   node:
     description: Node major version, e.g. '24'; empty for none.
     default: ''
+  node-cache:
+    description: "Passed to actions/setup-node's cache input (e.g. npm) when Node is installed; empty for none. Not used where Node is already there."
+    default: ''
   gitleaks:
     description: gitleaks version, e.g. '8.30.1'; empty for none.
     default: ''
@@ -39,6 +42,7 @@ runs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: ${{ inputs.node }}
+        cache: ${{ inputs.node-cache }}
     - if: inputs.gitleaks != ''
       shell: bash
       env:
