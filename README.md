@@ -25,6 +25,12 @@ jobs:
 | `playwright` (`browsers`, `working-directory`, `with-deps`) | checks the baked browsers are for this `@playwright/test`; a mismatch fails, naming the line to bump | `npx playwright install [--with-deps] <browsers>` |
 | `upload` (`name`, `path`, `retention-days`) | `ffbox-handoff`: hands the zip and the job's own credential to the host, which uploads it | `actions/upload-artifact` |
 
+**A pull request merged before its jobs start.** GitHub deletes the test merge (`refs/pull/N/merge`) once a pull request
+is merged or closed, so on FFBox a job still queued cannot fetch it. `checkout` then tests the pull request's head commit
+instead, with a warning (`scripts/ffbox-mirror.sh`). A job that reads the merge itself (`git diff HEAD^1..HEAD`, as
+ff-factory's vm-scripts plan does) sees only the head's last commit then; the push run on the base branch covers the
+merge.
+
 An FFBox runner is recognised by `FFGHR_GIT_MIRROR`, which only the FFBox host sets when it starts
 the container. Each action has an output `ffbox` saying which branch it took.
 

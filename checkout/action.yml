@@ -1,8 +1,9 @@
 name: Checkout (portable)
 description: >
   actions/checkout that works on any runner. On an FFBox runner, whose fence cannot reach github.com,
-  the host's mirror of this repository is brought up to this commit first and git is pointed at it;
-  on GitHub's runners or any other machine it is actions/checkout and nothing else.
+  the host's mirror of this repository is brought up to this commit first and git is pointed at it
+  (for a pull request merged before the job started, its head commit, with a warning); on GitHub's
+  runners or any other machine it is actions/checkout and nothing else.
 inputs:
   fetch-depth:
     description: Commits to fetch; 0 for every branch and tag (actions/checkout's own input).
@@ -17,21 +18,17 @@ outputs:
 runs:
   using: composite
   steps:
+    # On FFBox: the host's mirror, up to this commit, or a merged pull request's head when its test
+    # merge is gone (scripts/ffbox-mirror.sh says why). Anywhere else: nothing.
     - id: where
       shell: bash
       env:
         SHA: ${{ github.sha }}
-      run: |
-        # FFGHR_GIT_MIRROR is set by the FFBox host when it starts the container; nothing else sets it.
-        if [ -n "${FFGHR_GIT_MIRROR:-}" ] && [ -x /opt/ffghr/ffghr-workspace.sh ]; then
-          echo "ffbox=true" >> "$GITHUB_OUTPUT"
-          # The repository must be on the host's extra_mirrors (ffbox config.md) or the host refuses.
-          /opt/ffghr/ffghr-workspace.sh use-mirror "$SHA"
-        else
-          echo "ffbox=false" >> "$GITHUB_OUTPUT"
-          echo "not an FFBox runner: actions/checkout fetches from GitHub"
-        fi
+        EVENT: ${{ github.event_name }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        REF_IN: ${{ inputs.ref }}
+      run: '"$GITHUB_ACTION_PATH/../scripts/ffbox-mirror.sh"'
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: ${{ inputs.fetch-depth }}
-        ref: ${{ inputs.ref }}
+        ref: ${{ steps.where.outputs.ref || inputs.ref }}
