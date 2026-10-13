@@ -9,11 +9,11 @@ jobs:
   checks:
     runs-on: ${{ vars.FF_LINUX_RUNNER || 'ffgithubrunners' }}
     steps:
-      - uses: Final-Factory/ci-actions/checkout@<commit>
-      - uses: Final-Factory/ci-actions/setup@<commit>
+      - uses: Final-Factory/ci-actions/checkout@v1
+      - uses: Final-Factory/ci-actions/setup@v1
         with: { node: '24', gitleaks: 8.30.1 }
       - run: npm ci && npm test
-      - uses: Final-Factory/ci-actions/upload@<commit>
+      - uses: Final-Factory/ci-actions/upload@v1
         if: failure()
         with: { name: report, path: report }
 ```
@@ -41,8 +41,13 @@ the container. Each action has an output `ffbox` saying which branch it took.
   branch and tag commit of this repository, and every third-party action its `action.yml` files pin by
   commit, into the cache the runner reads (ffbox `scripts/actioncache.py`). A tag or another owner is
   refused there and fails the job at "Set up job". `scripts/check-pins.sh` checks both, in CI.
-- **Callers pin this repository by commit too**, for the same reason. The host polls about once a
-  minute, so a commit pushed here is usable on FFBox within a minute.
+- **Callers pin a major version, `@v1`.** The runner resolves the tag to its commit and finds that
+  commit in the FFBox host's cache, which archives every branch and tag commit of this repository
+  (the newest 300) about a minute after it is pushed. To release a change: push it to `main`, wait
+  for this repository's tests to pass and about a minute for the host, then move the tag:
+  `git tag -f v1 <commit> && git push -f origin v1`. Moving it before the host has the commit fails
+  FFBox jobs at "Set up job" for that minute. A change that breaks a caller is `v2`, and callers
+  move to it themselves. Pinning `@main` also works, with every push live at once.
 - **`ffbox-handoff` is pinned by commit inside `upload`.** In a composite action `./` means the job's
   workspace, not this repository, so changing it takes two commits: the change, then the pin.
 - **This repository is public.** A public repository's workflows can use its actions; nothing here is
