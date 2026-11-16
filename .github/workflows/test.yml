@@ -43,7 +43,12 @@ jobs:
       - name: checkout says it is not FFBox, and fetched two commits
         run: |
           test "${{ steps.co.outputs.ffbox }}" = false
-          test "$(git rev-list --count HEAD)" = 2
+          # A pull request checks out its test merge, whose second parent comes too: count the first parents.
+          test "$(git rev-list --count --first-parent HEAD)" = 2
+      # checkout cleaned the workspace; put the actions back beside it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ci-actions
       - id: wsr
         uses: ./ci-actions/workspace
         with:
@@ -52,10 +57,6 @@ jobs:
           fallback: main
       - name: workspace does nothing off FFBox
         run: test "${{ steps.wsr.outputs.ffbox }}" = false
-      # checkout cleaned the workspace; put the actions back beside it.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: ci-actions
       - id: setup
         uses: ./ci-actions/setup
         with:

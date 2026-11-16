@@ -61,6 +61,7 @@ run VERB=save SCOPE=s FFGHR_GIT_MIRROR=git://m/x.git REF_NAME=main >/dev/null
 check "no excludes: the name alone" "$(args)" "main@s.tar"
 
 echo "a failing image step never fails the job"
+# shellcheck disable=SC2016  # the fake script's own $1, written literally
 printf '#!/usr/bin/env bash\n[ "$1" = branch-key ] && { echo main; exit 0; }\nexit 1\n' > "$tmp/ws"
 check "restore" "$(run VERB=restore SCOPE=s FFGHR_GIT_MIRROR=git://m/x.git REF_NAME=main)" 0
 check "save" "$(run VERB=save SCOPE=s FFGHR_GIT_MIRROR=git://m/x.git REF_NAME=main)" 0
