@@ -11,6 +11,9 @@ inputs:
   ref:
     description: The branch, tag or commit to check out; empty for the event's own (actions/checkout's).
     default: ''
+  clean:
+    description: "'false' after the workspace action's restore: actions/checkout's own clean runs git clean -ffdx, which deletes the restored build folders."
+    default: 'true'
 outputs:
   ffbox:
     description: "'true' on an FFBox runner."
@@ -32,3 +35,4 @@ runs:
       with:
         fetch-depth: ${{ inputs.fetch-depth }}
         ref: ${{ steps.where.outputs.ref || inputs.ref }}
+        clean: ${{ inputs.clean }}

@@ -20,10 +20,11 @@ jobs:
 
 | Action | On FFBox | Anywhere else |
 |---|---|---|
-| `checkout` (`fetch-depth`, `ref`) | asks the host to bring its mirror of the repository up to this commit and points git at it, then `actions/checkout` | `actions/checkout` |
+| `checkout` (`fetch-depth`, `ref`, `clean`) | asks the host to bring its mirror of the repository up to this commit and points git at it, then `actions/checkout` | `actions/checkout` |
 | `setup` (`node`, `gitleaks`, `shellcheck`) | checks the image has each at the version asked for; a missing one fails, naming the line of ffbox `scripts/Dockerfile` to bump | uses what the runner has at that version, installs the rest: `actions/setup-node`, gitleaks from its release (checked against the release's checksums file), shellcheck from apt or brew |
 | `playwright` (`browsers`, `working-directory`, `with-deps`) | checks the baked browsers are for this `@playwright/test`; a mismatch fails, naming the line to bump | `npx playwright install [--with-deps] <browsers>` |
 | `upload` (`name`, `path`, `retention-days`) | `ffbox-handoff`: hands the zip and the job's own credential to the host, which uploads it | `actions/upload-artifact` |
+| `workspace` (`verb`, `scope`, `branch`, `fallback`, `target`, `exclude`) | `restore` (before `checkout`, which keeps `clean: false`): unpacks the newest cache entry the host mounted for this pool, trying the job's branch, its pull request's base, then `fallback`; `save` (at the end): offers the workspace as `<branch>@<scope>.tar`, which the host keeps only from the repository's own `rebuild-caches.yml` on its default branch. The work and the branch key are the image's `/opt/ffghr/ffghr-workspace.sh`, one script for every repository (`scripts/ffbox-workspace.sh`) | nothing (a cold job) |
 
 **A pull request merged before its jobs start.** GitHub deletes the test merge (`refs/pull/N/merge`) once a pull request
 is merged or closed, so on FFBox a job still queued cannot fetch it. `checkout` then tests the pull request's head commit
