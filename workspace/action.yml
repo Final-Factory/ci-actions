@@ -1,0 +1,50 @@
+name: Workspace cache (portable)
+description: >
+  On an FFBox runner, restore the job's workspace (its build folders, a Unity Library, a cargo target)
+  from the host's cache before the checkout, or offer it back to the host after the build; the host
+  grants a save only to the repository's own rebuild-caches.yml on its default branch. Anywhere else
+  it does nothing. The same step for the game's jobs and ffu's.
+inputs:
+  verb:
+    description: "restore (before actions/checkout, which must then keep clean: false) or save (at the end)."
+    required: true
+  scope:
+    description: The cache scope; the entry is <branch>@<scope>.tar. The Unity version for the game, a job kind for ffu.
+    required: true
+  branch:
+    description: The branch whose entry this is; empty for the job's own (a pull request's head branch, else the ref).
+    default: ''
+  fallback:
+    description: "restore: branches to try after the job's own and its pull request's base, space separated (master, main)."
+    default: ''
+  target:
+    description: "restore: a target cache (<branch>@<scope>@<target>.tar) to try first."
+    default: ''
+  exclude:
+    description: "save: tar patterns, relative to the workspace (./target/tmp), one per line, left out of the entry."
+    default: ''
+outputs:
+  ffbox:
+    description: "'true' on an FFBox runner."
+    value: ${{ steps.ws.outputs.ffbox }}
+  branch:
+    description: The job's branch as a cache key (FFBox only).
+    value: ${{ steps.ws.outputs.branch }}
+runs:
+  using: composite
+  steps:
+    # Every input through the environment, never pasted into the script: a branch is named by whoever
+    # pushed it.
+    - id: ws
+      shell: bash
+      env:
+        VERB: ${{ inputs.verb }}
+        SCOPE: ${{ inputs.scope }}
+        BRANCH: ${{ inputs.branch }}
+        FALLBACK: ${{ inputs.fallback }}
+        TARGET: ${{ inputs.target }}
+        EXCLUDE: ${{ inputs.exclude }}
+        HEAD_REF: ${{ github.head_ref }}
+        BASE_REF: ${{ github.base_ref }}
+        REF_NAME: ${{ github.ref_name }}
+      run: '"$GITHUB_ACTION_PATH/../scripts/ffbox-workspace.sh"'
